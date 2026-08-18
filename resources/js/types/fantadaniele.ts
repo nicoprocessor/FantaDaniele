@@ -7,6 +7,28 @@ export type Game = {
     departureAt: string;
     status: GameStatus;
     houseAmount: number;
+    actualArrivalTime?: string | null;
+    winnerName?: string | null;
+    myBet?: Bet | null;
+    participantCount?: number;
+    owner?: GameOwner | null;
+    participants?: GameParticipant[];
+};
+
+export type GameOwner = {
+    id: number;
+    name: string;
+    avatarUrl: string;
+};
+
+export type GameParticipant = {
+    id: number;
+    name: string;
+    avatarUrl: string;
+    arrivalTime: string;
+    stake: number;
+    betAt: string;
+    isCurrentUser: boolean;
 };
 
 export type Bet = {
@@ -29,6 +51,15 @@ export type Balance = {
     totalPlayed: number;
 };
 
+export type PlayerMetrics = {
+    available: number;
+    gamesPlayed: number;
+    wins: number;
+    draws: number;
+    losses: number;
+    winRate: number;
+};
+
 export type BalanceHistoryItem = {
     id: number;
     label: string;
@@ -39,34 +70,45 @@ export type BalanceHistoryItem = {
 export type ArrivalProposal = {
     id: number;
     proposedTime: string;
-    proposerName: string;
-    closesAt: string;
-    status: 'open' | 'confirmed' | 'closed';
+    proposer: GameOwner;
+    votes: ArrivalVote[];
+    yesVotes: number;
+    noVotes: number;
+    hasMajority: boolean;
 };
 
 export type ArrivalVote = {
     id: number;
-    voterName: string;
+    voter: GameOwner;
     choice: 'yes' | 'no';
+    isCurrentUser: boolean;
 };
 
 export type LeaderboardEntry = {
     position: number;
+    id: number;
     playerName: string;
-    points: number;
+    avatarUrl: string;
     balance: number;
-    history: number[];
+    wins: number;
+    gamesPlayed: number;
+    winRate: number;
     isCurrentUser: boolean;
 };
 
 export type FantaDashboardProps = {
     game?: Game | null;
-    myBet?: Bet | null;
-    balance?: Balance | null;
-    isAdmin?: boolean;
-    arrivalProposal?: ArrivalProposal | null;
-    votes?: ArrivalVote[];
+    metrics?: PlayerMetrics | null;
+    canStartGame?: boolean;
     leaderboard?: LeaderboardEntry[];
-    slots?: TimeSlot[];
-    history?: BalanceHistoryItem[];
+};
+
+export type GameShowProps = {
+    game: Game;
+    myBet: Bet | null;
+    availableBalance: number;
+    canManageGame: boolean;
+    proposals: ArrivalProposal[];
+    serverNow: string;
+    closesAt: string;
 };

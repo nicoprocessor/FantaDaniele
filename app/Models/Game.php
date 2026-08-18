@@ -11,6 +11,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property int|null $created_by
  * @property string $title
  * @property string $destination
  * @property Carbon $departure_at
@@ -18,6 +19,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $arrival_minute
  * @property int|null $winner_user_id
  * @property string|null $winner_type
+ * @property Carbon|null $closed_at
+ * @property-read User|null $creator
  */
 class Game extends Model
 {

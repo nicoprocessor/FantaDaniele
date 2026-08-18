@@ -1,5 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import { LogOut, Settings } from 'lucide-react';
+import AppearanceTabs from '@/components/appearance-tabs';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -41,10 +42,15 @@ export function UserMenuContent({ user }: Props) {
                         onClick={cleanup}
                     >
                         <Settings className="mr-2" />
-                        Settings
+                        Impostazioni
                     </Link>
                 </DropdownMenuItem>
             </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Tema</DropdownMenuLabel>
+            <div className="px-1 pb-1">
+                <AppearanceTabs className="w-full" />
+            </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
                 <Link
@@ -55,7 +61,7 @@ export function UserMenuContent({ user }: Props) {
                     data-test="logout-button"
                 >
                     <LogOut className="mr-2" />
-                    Log out
+                    Esci
                 </Link>
             </DropdownMenuItem>
         </>

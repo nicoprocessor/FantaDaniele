@@ -15,7 +15,7 @@ class GameArrivalVoteController extends Controller
     public function store(VoteOnArrivalRequest $request, Game $game, GameArrivalProposal $proposal): RedirectResponse
     {
         if ($proposal->game_id !== $game->id || $game->status !== 'started' || ! $game->bets()->where('user_id', $request->user()->id)->exists()) {
-            throw ValidationException::withMessages(['proposal' => 'You cannot vote on this proposal.']);
+            throw ValidationException::withMessages(['proposal' => __('game.cannot_vote')]);
         }
 
         GameArrivalVote::query()->updateOrCreate(

@@ -18,13 +18,13 @@ class ConfirmGameArrival
             $lockedProposal = GameArrivalProposal::query()->lockForUpdate()->findOrFail($proposal->id);
 
             if ($lockedProposal->game_id !== $lockedGame->id || $lockedGame->status !== 'started') {
-                throw ValidationException::withMessages(['proposal' => 'Arrival proposal cannot be confirmed for this game.']);
+                throw ValidationException::withMessages(['proposal' => __('game.proposal_cannot_confirm')]);
             }
 
             $votes = $lockedProposal->votes()->lockForUpdate()->get();
             $approvalCount = $votes->where('approved', true)->count();
             if ($votes->isEmpty() || $approvalCount * 2 <= $votes->count()) {
-                throw ValidationException::withMessages(['proposal' => 'Arrival proposal has not reached majority approval.']);
+                throw ValidationException::withMessages(['proposal' => __('game.proposal_no_majority')]);
             }
 
             $exactBet = GameBet::query()->whereBelongsTo($lockedGame)->where('arrival_minute', $lockedProposal->arrival_minute)->first();

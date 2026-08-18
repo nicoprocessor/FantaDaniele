@@ -14,7 +14,7 @@ class GameArrivalProposalController extends Controller
     public function store(ProposeArrivalRequest $request, Game $game): RedirectResponse
     {
         if ($game->status !== 'started' || ! $game->bets()->where('user_id', $request->user()->id)->exists()) {
-            throw ValidationException::withMessages(['game' => 'Only players in a started game can propose an arrival.']);
+            throw ValidationException::withMessages(['game' => __('game.only_started_players')]);
         }
 
         GameArrivalProposal::create(['game_id' => $game->id, 'proposed_by' => $request->user()->id, 'arrival_minute' => $request->integer('arrival_minute')]);

@@ -25,7 +25,7 @@ test('authenticated users can visit the dashboard', function () {
     $response->assertOk();
 });
 
-test('dashboard includes pending invitations for the authenticated user', function () {
+test('dashboard does not expose pending team invitations', function () {
     $owner = User::factory()->create(['name' => 'Taylor Otwell']);
     $invitedUser = User::factory()->create(['email' => 'invited@example.com']);
     $team = Team::factory()->create(['name' => 'Laravel Team']);
@@ -45,16 +45,11 @@ test('dashboard includes pending invitations for the authenticated user', functi
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
         ->component('dashboard')
-        ->has('pendingInvitations', 1)
-        ->where('pendingInvitations.0.code', $invitation->code)
-        ->where('pendingInvitations.0.inviterName', 'Taylor Otwell')
-        ->where('pendingInvitations.0.team.name', 'Laravel Team')
-        ->where('pendingInvitations.0.team.slug', $team->slug)
-        ->missing('pendingInvitations.0.teamName'),
+        ->missing('pendingInvitations'),
     );
 });
 
-test('dashboard does not include accepted invitations', function () {
+test('dashboard does not expose accepted invitations', function () {
     $owner = User::factory()->create();
     $invitedUser = User::factory()->create(['email' => 'invited@example.com']);
     $team = Team::factory()->create();
@@ -74,11 +69,11 @@ test('dashboard does not include accepted invitations', function () {
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
         ->component('dashboard')
-        ->has('pendingInvitations', 0),
+        ->missing('pendingInvitations'),
     );
 });
 
-test('dashboard excludes expired invitations without deleting them', function () {
+test('dashboard does not expose expired invitations without deleting them', function () {
     $owner = User::factory()->create();
     $invitedUser = User::factory()->create(['email' => 'invited@example.com']);
     $team = Team::factory()->create();
@@ -98,7 +93,7 @@ test('dashboard excludes expired invitations without deleting them', function ()
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
         ->component('dashboard')
-        ->has('pendingInvitations', 0),
+        ->missing('pendingInvitations'),
     );
 
     $this->assertDatabaseHas('team_invitations', [
@@ -106,7 +101,7 @@ test('dashboard excludes expired invitations without deleting them', function ()
     ]);
 });
 
-test('dashboard does not include or delete other users invitations', function () {
+test('dashboard does not expose other users invitations', function () {
     $owner = User::factory()->create();
     $invitedUser = User::factory()->create(['email' => 'invited@example.com']);
     $team = Team::factory()->create();
@@ -126,7 +121,7 @@ test('dashboard does not include or delete other users invitations', function ()
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
         ->component('dashboard')
-        ->has('pendingInvitations', 0),
+        ->missing('pendingInvitations'),
     );
 
     $this->assertDatabaseHas('team_invitations', [

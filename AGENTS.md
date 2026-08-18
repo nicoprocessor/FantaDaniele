@@ -17,6 +17,24 @@ Before relying on a package's API, confirm its installed version:
 
 This project has domain-specific skills available in `**/skills/**`. You MUST activate the relevant skill whenever you work in that domain—don't wait until you're stuck.
 
+## DiceBear
+
+- This project uses DiceBear 10 through the native PHP packages `dicebear/core` and `dicebear/styles`; do not use the HTTP API or a JavaScript DiceBear core in the application.
+- DiceBear has six native cores: JavaScript `@dicebear/core` + `@dicebear/styles`; PHP `dicebear/core` + `dicebear/styles`; Python `dicebear-core` + `dicebear-styles`; Rust `dicebear-core` + `dicebear-styles`; Go `github.com/dicebear/dicebear-go/v10` + `github.com/dicebear/styles/v10`; Dart `dicebear_core` + `dicebear_styles`.
+- Only JavaScript and HTTP had pre-10 forms. The other five cores launched in 2026.
+- The v10 HTTP form is `https://api.dicebear.com/10.x/<style>/svg?seed=<seed>`. Pass seeds and options as query parameters; array values are comma-separated.
+- Component options use `Variant` values. Use documented v10 camelCase options such as `eyesVariant` and `borderRadius`; style options are at `https://api.dicebear.com/10.x/<style>/options.json`.
+- Old to v10:
+  - `https://avatars.dicebear.com/` becomes `https://api.dicebear.com/10.x/`.
+  - `https://api.dicebear.com/9.x/` becomes `https://api.dicebear.com/10.x/`.
+  - `npm install @dicebear/core @dicebear/collection` becomes `npm install @dicebear/core @dicebear/styles`.
+  - Lorelei installation from `@dicebear/collection` becomes installation from `@dicebear/styles`.
+  - `createAvatar(...)` becomes `new Avatar(...)` with `new Style(...)`.
+  - `eyes` becomes `eyesVariant`.
+  - `radius` becomes `borderRadius`.
+- For PHP, load the Open Peeps style with `Style::fromJson(file_get_contents('vendor/dicebear/styles/src/open-peeps.json'))`, render with `new Avatar($style, ['seed' => $seed])`, and return `(string) $avatar`.
+- FantaDaniele uses Open Peeps only. Keep a finite server-validated seed whitelist and expose SVGs through controller image URLs; never inject SVG markup into React. Official style page: `https://www.dicebear.com/styles/open-peeps/`.
+
 ## Conventions
 
 - You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, and naming.

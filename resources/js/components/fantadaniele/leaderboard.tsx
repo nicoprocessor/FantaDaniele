@@ -2,23 +2,6 @@ import { Trophy } from 'lucide-react';
 import type { LeaderboardEntry } from '@/types';
 import { EmptyState } from './empty-state';
 
-function historyPoints(history: number[]): string {
-    if (history.length < 2) {
-        return '';
-    }
-
-    const min = Math.min(...history);
-    const max = Math.max(...history);
-    const range = max - min || 1;
-
-    return history
-        .map(
-            (value, index) =>
-                `${(index / (history.length - 1)) * 100},${34 - ((value - min) / range) * 30}`,
-        )
-        .join(' ');
-}
-
 export function Leaderboard({
     leaderboard,
 }: {
@@ -47,17 +30,20 @@ export function Leaderboard({
                                 <th className="px-3 py-2 font-medium">
                                     Giocatore
                                 </th>
-                                <th className="px-3 py-2 font-medium">Punti</th>
                                 <th className="px-3 py-2 font-medium">Saldo</th>
+                                <th className="px-3 py-2 font-medium">Vinte</th>
                                 <th className="px-3 py-2 font-medium">
-                                    Andamento
+                                    Giocate
+                                </th>
+                                <th className="px-3 py-2 font-medium">
+                                    Vittorie
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
                             {leaderboard.map((entry) => (
                                 <tr
-                                    key={entry.playerName}
+                                    key={entry.id}
                                     className={
                                         entry.isCurrentUser
                                             ? 'bg-muted/60'
@@ -68,30 +54,29 @@ export function Leaderboard({
                                         {entry.position}
                                     </td>
                                     <td className="px-3 py-3 font-medium">
-                                        {entry.playerName}
-                                    </td>
-                                    <td className="px-3 py-3">
-                                        {entry.points}
+                                        <span className="flex items-center gap-2">
+                                            <img
+                                                className="size-7 rounded-full"
+                                                src={entry.avatarUrl}
+                                                alt=""
+                                            />
+                                            {entry.playerName}
+                                            {entry.isCurrentUser && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    Tu
+                                                </span>
+                                            )}
+                                        </span>
                                     </td>
                                     <td className="px-3 py-3">
                                         {entry.balance}
                                     </td>
+                                    <td className="px-3 py-2">{entry.wins}</td>
                                     <td className="px-3 py-2">
-                                        <svg
-                                            aria-label={`Andamento di ${entry.playerName}`}
-                                            className="h-9 w-28"
-                                            viewBox="0 0 100 36"
-                                            role="img"
-                                        >
-                                            <polyline
-                                                fill="none"
-                                                points={historyPoints(
-                                                    entry.history,
-                                                )}
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                            />
-                                        </svg>
+                                        {entry.gamesPlayed}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                        {entry.winRate}%
                                     </td>
                                 </tr>
                             ))}

@@ -2,7 +2,9 @@
 
 namespace Database\Factories;
 
+use App\AvatarSeeds;
 use App\Enums\TeamRole;
+use App\JoinDefaultTeam;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -37,6 +39,7 @@ class UserFactory extends Factory
             'two_factor_confirmed_at' => null,
             'balance' => 0,
             'is_game_admin' => false,
+            'avatar_seed' => fake()->randomElement(AvatarSeeds::all()),
         ];
     }
 
@@ -45,16 +48,12 @@ class UserFactory extends Factory
      */
     public function configure(): static
     {
-        return $this->afterCreating(function ($user) {
-            $team = Team::factory()->personal()->create([
+        return $this->afterCreating(function (User $user): void {
+            $personalTeam = Team::factory()->personal()->create([
                 'name' => $user->name."'s Team",
             ]);
-
-            $team->members()->attach($user, [
-                'role' => TeamRole::Owner->value,
-            ]);
-
-            $user->switchTeam($team);
+            $personalTeam->members()->attach($user, ['role' => TeamRole::Owner->value]);
+            app(JoinDefaultTeam::class)->handle($user);
         });
     }
 

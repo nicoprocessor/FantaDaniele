@@ -2,9 +2,10 @@
 
 namespace App\Actions\Fortify;
 
-use App\Actions\Teams\CreateTeam;
+use App\AvatarSeeds;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
+use App\JoinDefaultTeam;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -14,10 +15,7 @@ class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules, ProfileValidationRules;
 
-    public function __construct(private CreateTeam $createTeam)
-    {
-        //
-    }
+    public function __construct(private JoinDefaultTeam $joinDefaultTeam) {}
 
     /**
      * Validate and create a newly registered user.
@@ -27,7 +25,8 @@ class CreateNewUser implements CreatesNewUsers
     public function create(array $input): User
     {
         Validator::make($input, [
-            ...$this->profileRules(),
+            'name' => $this->nameRules(),
+            'email' => $this->emailRules(null),
             'password' => $this->passwordRules(),
         ])->validate();
 
@@ -36,9 +35,10 @@ class CreateNewUser implements CreatesNewUsers
                 'name' => $input['name'],
                 'email' => $input['email'],
                 'password' => $input['password'],
+                'avatar_seed' => AvatarSeeds::forIdentity($input['email']),
             ]);
 
-            $this->createTeam->handle($user, $user->name."'s Team", isPersonal: true);
+            $this->joinDefaultTeam->handle($user);
 
             return $user;
         });

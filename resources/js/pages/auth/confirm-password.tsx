@@ -14,16 +14,16 @@ import { store } from '@/routes/password/confirm';
 export default function ConfirmPassword() {
     return (
         <>
-            <Head title="Confirm password" />
+            <Head title="Conferma password" />
 
             <PasskeyVerify
                 routes={{
                     options: confirmOptions(),
                     submit: confirmStore(),
                 }}
-                label="Confirm with passkey"
-                loadingLabel="Confirming..."
-                separator="Or confirm with password"
+                label="Conferma con passkey"
+                loadingLabel="Conferma in corso..."
+                separator="Oppure conferma con password"
             />
 
             <Form {...store.form()} resetOnSuccess={['password']}>
@@ -49,7 +49,7 @@ export default function ConfirmPassword() {
                                 data-test="confirm-password-button"
                             >
                                 {processing && <Spinner />}
-                                Confirm password
+                                Conferma password
                             </Button>
                         </div>
                     </div>
@@ -60,7 +60,7 @@ export default function ConfirmPassword() {
 }
 
 ConfirmPassword.layout = {
-    title: 'Confirm password',
+    title: 'Conferma password',
     description:
-        'This is a secure area of the application. Please confirm your password before continuing.',
+        'Questa è un’area protetta. Conferma la password per continuare.',
 };

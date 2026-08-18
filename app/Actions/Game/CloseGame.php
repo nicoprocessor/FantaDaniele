@@ -14,7 +14,7 @@ class CloseGame
             $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
 
             if (! in_array($lockedGame->status, ['open', 'started'], true)) {
-                throw ValidationException::withMessages(['game' => 'This game is already closed.']);
+                throw ValidationException::withMessages(['game' => __('game.already_closed')]);
             }
 
             $lockedGame->update(['status' => 'closed', 'closed_at' => now()]);

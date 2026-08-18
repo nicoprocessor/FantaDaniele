@@ -1,13 +1,13 @@
 <?php
 
 use App\Actions\Game\CloseExpiredGames;
-use App\Actions\Game\CloseGame;
 use App\Actions\Game\ConfirmGameArrival;
 use App\Actions\Game\CreateGame;
 use App\Actions\Game\PlaceGameBet;
 use App\Models\Game;
 use App\Models\GameArrivalProposal;
 use App\Models\GameArrivalVote;
+use App\Models\GameBet;
 use App\Models\User;
 use App\Notifications\DailyGamePropertyGranted;
 use Illuminate\Support\Facades\Notification;
@@ -92,32 +92,197 @@ test('midnight closure closes unfinished games from prior days without winner', 
         ->and($game->winner_user_id)->toBeNull();
 });
 
-test('administrator may close an unfinished game without a winner', function () {
-    $administrator = User::factory()->create(['is_game_admin' => true]);
-    $game = app(CreateGame::class)->handle($administrator);
+test('closed game history does not consume the single active-game slot', function () {
+    Game::factory()->closed()->create();
+    Game::factory()->closed()->create();
 
-    app(CloseGame::class)->handle($game);
-
-    expect($game->fresh()->status)->toBe('closed')
-        ->and($game->winner_user_id)->toBeNull();
+    expect(Game::query()->where('status', 'closed')->count())->toBe(2);
 });
 
-test('dashboard exposes safe FantaDaniele DTOs through every current-team URL', function () {
+test('cancelling an active game refunds every stake and removes its cascaded records', function () {
+    $owner = User::factory()->create(['balance' => 6]);
+    $player = User::factory()->create(['balance' => 1]);
+    $game = Game::factory()->started()->create(['created_by' => $owner->id]);
+    $ownerBet = GameBet::factory()->create(['game_id' => $game->id, 'user_id' => $owner->id, 'amount' => 4]);
+    $playerBet = GameBet::factory()->create(['game_id' => $game->id, 'user_id' => $player->id, 'amount' => 6]);
+    $proposal = GameArrivalProposal::factory()->create(['game_id' => $game->id, 'proposed_by' => $owner->id]);
+    $vote = GameArrivalVote::factory()->create(['game_arrival_proposal_id' => $proposal->id, 'user_id' => $owner->id]);
+
+    $this->actingAs($owner)->delete(route('games.destroy', $game))->assertRedirect(route('games.index'));
+
+    expect($owner->fresh()->balance)->toBe(10)
+        ->and($player->fresh()->balance)->toBe(7);
+    $this->assertModelMissing($game);
+    $this->assertModelMissing($ownerBet);
+    $this->assertModelMissing($playerBet);
+    $this->assertModelMissing($proposal);
+    $this->assertModelMissing($vote);
+});
+
+test('only the game owner or an explicit administrator of an orphaned game can manage it', function () {
+    $owner = User::factory()->create();
+    $globalAdministrator = User::factory()->create(['is_game_admin' => true]);
+    $game = Game::factory()->started()->create(['created_by' => $owner->id]);
+
+    $this->actingAs($globalAdministrator)->delete(route('games.destroy', $game))->assertForbidden();
+    $this->actingAs($owner)->delete(route('games.destroy', $game))->assertRedirect(route('games.index'));
+
+    $orphanedGame = Game::factory()->started()->create(['created_by' => null]);
+    $this->actingAs($globalAdministrator)->delete(route('games.destroy', $orphanedGame))->assertRedirect(route('games.index'));
+});
+
+test('cancelling a closed game returns an explicit Italian validation error', function () {
+    $owner = User::factory()->create();
+    $game = Game::factory()->closed()->create(['created_by' => $owner->id]);
+
+    $this->actingAs($owner)
+        ->delete(route('games.destroy', $game))
+        ->assertSessionHasErrors(['game' => __('game.cannot_cancel')]);
+});
+
+test('dashboard exposes safe FantaDaniele DTOs through the global URL', function () {
     $user = User::factory()->create(['balance' => 3]);
 
     $this->actingAs($user)
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('game', null)
-            ->where('myBet', null)
-            ->where('balance.available', 3)
-            ->where('balance.totalWon', 0)
-            ->where('balance.totalPlayed', 0)
-            ->where('isAdmin', false)
-            ->where('arrivalProposal', null)
-            ->has('votes', 0)
-            ->has('leaderboard', 0)
-            ->has('slots', 0)
-            ->has('history', 0),
+            ->where('metrics.available', 3)
+            ->where('metrics.gamesPlayed', 0)
+            ->where('metrics.wins', 0)
+            ->where('metrics.draws', 0)
+            ->where('metrics.losses', 0)
+            ->where('metrics.winRate', 0)
+            ->where('canStartGame', true)
+            ->has('leaderboard', 1)
+            ->missing('myBet')
+            ->missing('arrivalProposal')
+            ->missing('votes')
+            ->missing('pendingInvitations'),
         );
+});
+
+test('dashboard exposes an active game as a compact overview only', function () {
+    $owner = User::factory()->create();
+    $player = User::factory()->create();
+    $game = Game::factory()->started()->create(['created_by' => $owner->id]);
+    GameBet::factory()->create(['game_id' => $game->id, 'user_id' => $player->id, 'amount' => 4]);
+
+    $this->actingAs($player)->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page
+        ->where('game.id', $game->id)
+        ->where('game.participantCount', 1)
+        ->where('game.houseAmount', 4)
+        ->where('game.owner.id', $owner->id)
+        ->missing('game.participants')
+        ->missing('myBet')
+        ->missing('arrivalProposal'));
+});
+
+test('game bet validation errors are actionable in Italian', function () {
+    $user = User::factory()->create(['balance' => 5]);
+    $game = Game::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('games.bets.store', $game), [])
+        ->assertSessionHasErrors([
+            'amount' => 'Il campo puntata è obbligatorio.',
+            'arrival_minute' => 'Il campo orario di arrivo è obbligatorio.',
+        ]);
+
+    $this->actingAs($user)
+        ->post(route('games.bets.store', $game), ['amount' => 0, 'arrival_minute' => 600])
+        ->assertSessionHasErrors(['amount' => 'Il campo puntata deve essere almeno 1.']);
+});
+
+test('active game detail exposes every proposal with its own votes and server clock contract', function () {
+    $player = User::factory()->create();
+    $game = Game::factory()->started()->create();
+    $previousProposal = GameArrivalProposal::factory()->create([
+        'game_id' => $game->id,
+        'proposed_by' => $player->id,
+        'created_at' => now()->subMinute(),
+    ]);
+    $currentProposal = GameArrivalProposal::factory()->create([
+        'game_id' => $game->id,
+        'proposed_by' => $player->id,
+        'created_at' => now(),
+    ]);
+    GameArrivalVote::factory()->create([
+        'game_arrival_proposal_id' => $previousProposal->id,
+        'user_id' => $player->id,
+    ]);
+    GameArrivalVote::factory()->create([
+        'game_arrival_proposal_id' => $previousProposal->id,
+        'user_id' => User::factory()->create()->id,
+    ]);
+    $currentVote = GameArrivalVote::factory()->create([
+        'game_arrival_proposal_id' => $currentProposal->id,
+        'user_id' => $player->id,
+    ]);
+
+    $this->actingAs($player)->get(route('games.show', $game))->assertInertia(fn (Assert $page) => $page
+        ->component('games/show')
+        ->where('game.owner.id', $game->created_by)
+        ->has('proposals', 2)
+        ->where('proposals.0.id', $currentProposal->id)
+        ->has('proposals.0.votes', 1)
+        ->where('proposals.0.votes.0.id', $currentVote->id)
+        ->has('proposals.1.votes', 2)
+        ->where('canManageGame', false)
+        ->has('serverNow')
+        ->where('closesAt', $game->created_at->copy()->setTimezone(config('app.timezone'))->addDay()->startOfDay()->toIso8601String()));
+});
+
+test('only active games have a dedicated live page', function () {
+    $player = User::factory()->create();
+    $closedGame = Game::factory()->closed()->create();
+
+    $this->actingAs($player)->get(route('games.show', $closedGame))->assertNotFound();
+});
+
+test('only the owner may confirm a majority proposal for a non-orphaned game', function () {
+    $owner = User::factory()->create();
+    $globalAdministrator = User::factory()->create(['is_game_admin' => true]);
+    $game = Game::factory()->started()->create(['created_by' => $owner->id]);
+    $proposal = GameArrivalProposal::factory()->create(['game_id' => $game->id, 'proposed_by' => $owner->id]);
+    GameArrivalVote::factory()->create(['game_arrival_proposal_id' => $proposal->id, 'user_id' => $owner->id, 'approved' => true]);
+
+    $this->actingAs($globalAdministrator)
+        ->post(route('games.arrival.confirm', $game), ['proposal_id' => $proposal->id])
+        ->assertForbidden();
+    $this->actingAs($owner)
+        ->post(route('games.arrival.confirm', $game), ['proposal_id' => $proposal->id])
+        ->assertRedirect();
+
+    expect($game->fresh()->status)->toBe('closed');
+});
+
+test('only the default team owner or explicit game admin can administer games', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $explicitAdmin = User::factory()->create(['is_game_admin' => true]);
+
+    expect($owner->canAdministerGames())->toBeTrue()
+        ->and($member->canAdministerGames())->toBeFalse()
+        ->and($explicitAdmin->canAdministerGames())->toBeTrue();
+});
+
+test('only game administrators can start a game through the global endpoint', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+
+    $this->actingAs($member)->post(route('games.store'))->assertForbidden();
+    $this->assertDatabaseCount('games', 0);
+
+    $this->actingAs($owner)->post(route('games.store'))->assertRedirect();
+    $this->assertDatabaseCount('games', 1);
+});
+
+test('an explicit game administrator can start a game through the global endpoint', function () {
+    User::factory()->create();
+    $administrator = User::factory()->create(['is_game_admin' => true]);
+
+    $this->actingAs($administrator)->post(route('games.store'))->assertRedirect();
+
+    $this->assertDatabaseCount('games', 1);
 });

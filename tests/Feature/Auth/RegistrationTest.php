@@ -1,8 +1,5 @@
 <?php
 
-use App\Enums\TeamRole;
-use App\Models\Team;
-use App\Models\TeamInvitation;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -12,25 +9,9 @@ test('registration screen can be rendered', function () {
     $response->assertOk();
 });
 
-test('registration screen includes team invitation context', function () {
-    $owner = User::factory()->create();
-    $team = Team::factory()->create(['name' => 'Laravel Team']);
-    $team->members()->attach($owner, ['role' => TeamRole::Owner->value]);
-
-    $invitation = TeamInvitation::factory()->create([
-        'team_id' => $team->id,
-        'email' => 'invited@example.com',
-        'invited_by' => $owner->id,
-    ]);
-
-    $response = $this->get(route('register', ['invitation' => $invitation->code]));
-
-    $response->assertOk();
-    $response->assertInertia(fn (Assert $page) => $page
-        ->component('auth/register')
-        ->where('teamInvitation.code', $invitation->code)
-        ->where('teamInvitation.teamName', 'Laravel Team'),
-    );
+test('registration screen does not expose team invitation context', function () {
+    $this->get(route('register', ['invitation' => 'disabled']))
+        ->assertInertia(fn (Assert $page) => $page->missing('teamInvitation'));
 });
 
 test('new users can register', function () {
@@ -45,4 +26,6 @@ test('new users can register', function () {
 
     $user = User::where('email', 'test@example.com')->first();
     $response->assertRedirect(route('dashboard'));
+    expect($user->currentTeam?->name)->toBe('Gruppo Daniele')
+        ->and($user->currentTeam?->is_personal)->toBeFalse();
 });

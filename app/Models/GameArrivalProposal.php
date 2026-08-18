@@ -8,6 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $arrival_minute
+ * @property-read User $proposer
+ */
 class GameArrivalProposal extends Model
 {
     /** @use HasFactory<GameArrivalProposalFactory> */

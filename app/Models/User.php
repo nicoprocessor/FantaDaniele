@@ -30,6 +30,9 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property int|null $current_team_id
  * @property int $balance
  * @property bool $is_game_admin
+ * @property string $avatar_seed
+ * @property-read int $games_played
+ * @property-read int $wins
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Team|null $currentTeam
@@ -37,7 +40,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property-read Collection<int, Membership> $teamMemberships
  * @property-read Collection<int, Team> $teams
  */
-#[Fillable(['name', 'email', 'password', 'current_team_id', 'balance', 'is_game_admin'])]
+#[Fillable(['name', 'email', 'password', 'current_team_id', 'balance', 'is_game_admin', 'avatar_seed'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -70,6 +73,12 @@ class User extends Authenticatable implements PasskeyUser
         return $this->hasMany(GameBet::class);
     }
 
+    /** @return HasMany<Game, $this> */
+    public function gamesWon(): HasMany
+    {
+        return $this->hasMany(Game::class, 'winner_user_id');
+    }
+
     /**
      * Get daily game-property grants for user.
      *
@@ -86,7 +95,7 @@ class User extends Authenticatable implements PasskeyUser
     public function canAdministerGames(): bool
     {
         return $this->is_game_admin || $this->ownedTeams()
-            ->where('is_personal', false)
+            ->where('teams.slug', 'gruppo-daniele')
             ->exists();
     }
 }

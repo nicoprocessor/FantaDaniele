@@ -7,6 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property bool $approved
+ * @property-read User $user
+ */
 class GameArrivalVote extends Model
 {
     /** @use HasFactory<GameArrivalVoteFactory> */

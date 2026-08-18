@@ -15,7 +15,7 @@ class CreateGame
             $activeGame = Game::query()->whereIn('status', ['open', 'started'])->lockForUpdate()->first();
 
             if ($activeGame !== null) {
-                throw ValidationException::withMessages(['game' => 'A global game is already active.']);
+                throw ValidationException::withMessages(['game' => __('game.active')]);
             }
 
             return Game::create(['created_by' => $user->id, 'departure_at' => now()]);

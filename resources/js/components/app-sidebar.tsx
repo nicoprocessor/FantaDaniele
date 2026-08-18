@@ -1,9 +1,8 @@
-import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { BarChart3, LayoutGrid, Medal, Trophy } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
-import { TeamSwitcher } from '@/components/team-switcher';
 import {
     Sidebar,
     SidebarContent,
@@ -14,20 +13,23 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as gamesIndex } from '@/routes/games';
+import { index as leaderboardIndex } from '@/routes/leaderboard';
+import { index as statisticsIndex } from '@/routes/statistics';
 import type { NavItem } from '@/types';
 
 export function AppSidebar() {
-    const page = usePage();
-    const dashboardUrl = page.props.currentTeam
-        ? dashboard(page.props.currentTeam.slug)
-        : '/';
+    const dashboardUrl = dashboard();
 
     const mainNavItems: NavItem[] = [
         {
-            title: 'Partita',
+            title: 'Dashboard',
             href: dashboardUrl,
             icon: LayoutGrid,
         },
+        { title: 'Partite', href: gamesIndex(), icon: Trophy },
+        { title: 'Classifica', href: leaderboardIndex(), icon: Medal },
+        { title: 'Statistiche', href: statisticsIndex(), icon: BarChart3 },
     ];
 
     return (
@@ -40,11 +42,6 @@ export function AppSidebar() {
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <TeamSwitcher />
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>

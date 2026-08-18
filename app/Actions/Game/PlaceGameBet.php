@@ -17,19 +17,19 @@ class PlaceGameBet
             $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
 
             if (! in_array($lockedGame->status, ['open', 'started'], true)) {
-                throw ValidationException::withMessages(['game' => 'This game is closed.']);
+                throw ValidationException::withMessages(['game' => __('game.closed')]);
             }
 
             if ($amount < 1 || $amount > $lockedUser->balance) {
-                throw ValidationException::withMessages(['amount' => 'Bet amount must be between 1 and your balance.']);
+                throw ValidationException::withMessages(['amount' => __('game.amount_out_of_range')]);
             }
 
             if (GameBet::query()->whereBelongsTo($lockedGame)->whereBelongsTo($lockedUser)->exists()) {
-                throw ValidationException::withMessages(['game' => 'You already placed a bet for this game.']);
+                throw ValidationException::withMessages(['game' => __('game.already_bet')]);
             }
 
             if (GameBet::query()->whereBelongsTo($lockedGame)->where('arrival_minute', $arrivalMinute)->exists()) {
-                throw ValidationException::withMessages(['arrival_minute' => 'This arrival minute is already taken.']);
+                throw ValidationException::withMessages(['arrival_minute' => __('game.arrival_taken')]);
             }
 
             $bet = GameBet::create(['game_id' => $lockedGame->id, 'user_id' => $lockedUser->id, 'amount' => $amount, 'arrival_minute' => $arrivalMinute]);

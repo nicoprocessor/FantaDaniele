@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\AvatarSeeds;
+use App\Enums\TeamRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Models\Team;
+use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,6 +27,7 @@ class ProfileController extends Controller
         return Inertia::render('settings/profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
+            'avatarSeeds' => AvatarSeeds::all(),
         ]);
     }
 
@@ -50,9 +56,35 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        Auth::logout();
+        DB::transaction(function () use ($user): void {
+            $deletingUser = User::query()->lockForUpdate()->findOrFail($user->id);
+            $team = Team::query()->where('slug', 'gruppo-daniele')->lockForUpdate()->first();
 
-        $user->delete();
+            if ($team !== null) {
+                $membership = $team->memberships()
+                    ->where('user_id', $deletingUser->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                $hasRemainingOwner = $team->memberships()
+                    ->where('role', TeamRole::Owner->value)
+                    ->where('user_id', '!=', $deletingUser->id)
+                    ->exists();
+
+                if ($membership?->role === TeamRole::Owner && ! $hasRemainingOwner) {
+                    $team->memberships()
+                        ->where('user_id', '!=', $deletingUser->id)
+                        ->orderBy('user_id')
+                        ->lockForUpdate()
+                        ->first()
+                        ?->update(['role' => TeamRole::Owner]);
+                }
+            }
+
+            $deletingUser->delete();
+        });
+
+        Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
